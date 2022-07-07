@@ -21,20 +21,28 @@
 
 </HEAD>
 <SCRIPT LANGUAGE="VBScript">
+Const WINDOW_WIDTH = 700
+Const WINDOW_HEIGHT = 730
 
-  
-Sub Window_Onload
+init_window()
+
+Sub init_window
    
-    window.resizeTo 700,730
-
+	window.resizeTo WINDOW_WIDTH,WINDOW_HEIGHT
     screenWidth  = Document.ParentWindow.Screen.AvailWidth
     screenHeight = Document.ParentWindow.Screen.AvailHeight
-    posLeft      = (screenWidth - 700) / 16
-    posTop       = (screenHeight - 730) *15/16     
-
+	posLeft      = (screenWidth - WINDOW_WIDTH)/16
+	posTop       = (screenHeight - WINDOW_HEIGHT)*15/16
     window.moveTo posLeft, posTop
 End Sub
  
+ 
+Sub Window_Onload 
+    ' This sub is executed always when application starts	
+	document.getElementById("Computer_Name").value = "localhost"
+	document.getElementById("SEARCH_button").value = " Search " 
+	document.getElementById("Computer_Name").Focus
+End Sub
 
 
 Sub Start_sub()
@@ -77,7 +85,7 @@ Sub Start_sub()
            ScreenUpdate
 
            ' Enable user configurable fields in user form
-           document.getElementById("SEARCH_button").Value    = "  Search  "
+           document.getElementById("SEARCH_button").Value    = "  Search  "		   
            document.getElementById("Computer_Name").disabled = false
            document.getElementById("ShowUserSID").disabled   = false
            document.getElementById("SEARCH_button").disabled = false
