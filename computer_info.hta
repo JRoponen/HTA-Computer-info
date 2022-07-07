@@ -1,0 +1,1121 @@
+<! Start >
+<HTML>
+<HEAD>
+
+  <TITLE>Computer Info</TITLE>
+  <hta:application id="CompInfo"
+    VERSION        ="1.0" 
+    applicationname="Computer_Info" 
+    BORDER         ="thin"
+    BORDERSTYLE    ="static"
+    INNERBORDER    ="no"
+    caption        ="yes"
+    MAXIMIZEBUTTON ="no"
+    MINIMIZEBUTTON ="no"
+    SELECTION      ="yes"
+    SCROLL         ="yes"
+    showintaskbar  ="yes"
+    singleinstance ="no"
+    sysmenu        ="yes"
+   ></HTA:APPLICATION>
+
+</HEAD>
+<SCRIPT LANGUAGE="VBScript">
+
+  
+Sub Window_Onload
+   
+    window.resizeTo 700,730
+
+    screenWidth  = Document.ParentWindow.Screen.AvailWidth
+    screenHeight = Document.ParentWindow.Screen.AvailHeight
+    posLeft      = (screenWidth - 700) / 16
+    posTop       = (screenHeight - 730) *15/16     
+
+    window.moveTo posLeft, posTop
+End Sub
+ 
+
+
+Sub Start_sub()
+
+          ' Set computer name variable value from user form field           
+           sComputerName = Computer_Name.value
+            
+           Clear_form sComputerName
+	 
+          ' Disable user configurable fields in user form
+           document.getElementById("SEARCH_button").Value    = "Checking..."
+           document.getElementById("Computer_Name").disabled = true
+           document.getElementById("ShowUserSID").disabled   = true 
+           document.getElementById("SEARCH_button").disabled = true
+
+	   ScreenUpdate
+
+           if (Ping(sComputerName) = "true" and sComputerName <> "" ) then
+             Set objWMIService = GetObject("winmgmts:{impersonationLevel=impersonate}!\\" & sComputerName & "\root\cimv2")
+             If Err = 0 Then         
+               Set objReg = GetObject("winmgmts:{impersonationLevel=impersonate}!\\" & sComputerName & "\root\default:StdRegProv")
+               If Err = 0 Then 
+                 Fill_form sComputerName
+               Else 
+                 document.getElementById("Comp_Name").innerHTML = sComputerName & ": WMI error in \root\default:StdRegProv, Error Code: " & Err & " ," & Err.Description
+               End If
+             Else
+               document.getElementById("Comp_Name").innerHTML = sComputerName & ": WMI error in \root\cimv2, Error Code: " & Err & " ," & Err.Description
+             End If
+             Err.Clear
+           Else
+             ' Show message if computer is not in network or user has not given computer name
+             If sComputerName = "" Then
+               document.getElementById("Comp_Name").innerHTML = "No computer name given"
+             Else
+               document.getElementById("Comp_Name").innerHTML = "'" & sComputerName & "' is not in network"
+             End If
+           End if
+
+           ScreenUpdate
+
+           ' Enable user configurable fields in user form
+           document.getElementById("SEARCH_button").Value    = "  Search  "
+           document.getElementById("Computer_Name").disabled = false
+           document.getElementById("ShowUserSID").disabled   = false
+           document.getElementById("SEARCH_button").disabled = false
+End Sub
+
+
+
+Sub Fill_form(sComputerName)
+    document.getElementById("Comp_Name").innerHTML              = Check_Real_Name(sComputerName) & "<b> IP: </b>" & Check_IP_Address(sComputerName)
+    ScreenUpdate
+    document.getElementById("IE_Version").innerHTML             = Check_IE_Version(sComputerName)
+    ScreenUpdate
+    document.getElementById("Windows_Version").innerHTML        = Check_Windows_Version(sComputerName)
+    ScreenUpdate
+    document.getElementById("OP_system_Version").innerHTML      = Check_OP_system_version(sComputerName)
+    ScreenUpdate
+    document.getElementById("Installation_Date").innerHTML      = WMIDateStringToDate(Check_Installation_Date(sComputerName))
+    ScreenUpdate
+    document.getElementById("Computer_Model").innerHTML         = Check_Computer_Model(sComputerName)
+    ScreenUpdate
+    document.getElementById("Computer_Serial").innerHTML        = Check_Serial(sComputerName)
+    ScreenUpdate
+    document.getElementById("Memory_Installed").innerHTML       = Check_Memory_Size(sComputerName)
+    ScreenUpdate
+    document.getElementById("Pagefile_Size").innerHTML          = Check_Pagefile_Size(sComputerName)
+    ScreenUpdate
+    document.getElementById("Disk_Size").innerHTML              = Check_HardDisk_Space(sComputerName) 
+    ScreenUpdate
+    document.getElementById("Disk_Data").innerHTML              = Check_HardDisk_Data(sComputerName)
+    ScreenUpdate
+    document.getElementById("Video_Description").innerHTML      = Check_Video_Description(sComputerName)
+    ScreenUpdate
+    document.getElementById("Network_Cards").innerHTML          = Check_NIC(sComputerName)
+    ScreenUpdate
+    document.getElementById("DNS_suffix").innerHTML             = Check_DNS_Suffix(sComputerName)
+    ScreenUpdate
+    document.getElementById("NET_framework").innerHTML          = Check_DotNet(sComputerName)
+    ScreenUpdate
+    document.getElementById("Last_Boot_Time").innerHTML         = Check_Host_UpTime(sComputerName)
+    ScreenUpdate
+    document.getElementById("Currently_Logged_Users").innerHTML = Check_logged_users(sComputerName)
+    ScreenUpdate 
+End Sub
+
+
+
+Sub Clear_form(sComputerName)
+' This sub clears all fields in user dialog form
+    Document.All.Computer_Name.Value                            = ""
+    document.getElementById("Comp_Name").innerHTML              = ""
+    document.getElementById("IE_Version").innerHTML             = ""
+    document.getElementById("Windows_Version").innerHTML        = ""
+    document.getElementById("OP_system_Version").innerHTML      = ""
+    document.getElementById("Installation_Date").innerHTML      = ""
+    document.getElementById("Computer_Model").innerHTML         = ""
+    document.getElementById("Computer_Serial").innerHTML        = ""
+    document.getElementById("Memory_Installed").innerHTML       = ""
+    document.getElementById("Pagefile_Size").innerHTML          = ""
+    document.getElementById("Disk_Size").innerHTML              = ""
+    document.getElementById("Disk_Data").innerHTML              = ""
+    document.getElementById("Video_Description").innerHTML      = ""
+    document.getElementById("Network_Cards").innerHTML          = ""
+    document.getElementById("DNS_suffix").innerHTML             = ""
+    document.getElementById("NET_framework").innerHTML          = ""
+    document.getElementById("Last_Boot_Time").innerHTML         = ""
+    document.getElementById("Currently_Logged_Users").innerHTML = ""
+End Sub
+
+
+
+Sub Reload(sComputerName)
+    document.getElementById("Computer_Name").value = sComputerName
+    Fill_form sComputerName       
+End Sub
+
+
+
+Function Check_Real_Name(sComputerName)
+' This function checks computer name from computer WMI and then returns it in function name
+
+  Set objWMIService = GetObject("winmgmts:{impersonationLevel=impersonate}!\\" & sComputerName & "\root\cimv2")
+  Set colItems = objWMIService.ExecQuery("SELECT Name FROM Win32_ComputerSystem",,48) 
+  For Each objItem in colItems 
+    ComputerRealName = objItem.Name
+  Next
+
+  Check_Real_Name = "<a id=anchor_ComputerName>" & ComputerRealName & "</a>"
+
+End Function
+
+
+
+Function Check_IP_Address(sComputerName)
+' This function checks computer IP address from computer WMI and then returns it in function name
+
+  Set objWMIService = GetObject("winmgmts:{impersonationLevel=impersonate}!\\" & sComputerName & "\root\cimv2")
+  Set IPConfigSet = objWMIService.ExecQuery ("SELECT IPAddress FROM Win32_NetworkAdapterConfiguration",,48)
+ 
+  For Each IPConfig in IPConfigSet
+    If Not IsNull(IPConfig.IPAddress) Then
+
+      For i = LBound(IPConfig.IPAddress) to UBound(IPConfig.IPAddress)
+        IPAddressList = IPAddressList & " " & IPConfig.IPAddress(i)
+      Next
+    End If
+  Next
+
+ ' If IPAddressList = "" Then
+ '   IPAddressList = "No IP Address Defined"  
+ ' End If
+
+  Check_IP_Address = IPAddressList
+
+End Function
+
+
+
+Function Check_IE_Version(sComputerName)
+' This function checks Internet Explorer version from computer registry via WMI and then returns it in function name
+
+  Check_IE_Version = GetRegistryValueHKLM(sComputerName, "SOFTWARE\Microsoft\Internet Explorer","Version" ) 
+
+End Function
+
+
+
+Function Check_Windows_version(sComputerName)
+' This function checks if OS is 32 or 64 bit via WMI and Windows version after that it returns this information in function name
+
+
+  Set objWMIService = GetObject("winmgmts:{impersonationLevel=impersonate}!\\" & sComputerName & "\root\cimv2")
+  Set colItems = objWMIService.ExecQuery("SELECT AddressWidth FROM Win32_Processor WHERE DeviceID='CPU0'",,48) 
+  For Each objItem in colItems 
+    strWindowsBit = objItem.AddressWidth
+  Next
+
+
+  Set objWMIService = GetObject("winmgmts:{impersonationLevel=impersonate}!\\" & sComputerName & "\root\cimv2")
+  Set colItems = objWMIService.ExecQuery("SELECT Caption FROM Win32_OperatingSystem ",,48) 
+  For Each objItem in colItems 
+    strWindowsVersion = objItem.Caption
+  Next
+
+  Check_Windows_version = strWindowsBit & "-bit " & strWindowsVersion
+
+End Function
+
+
+
+Function Check_OP_system_version(sComputerName)
+' This function checks Operating system version from computer registry via WMI and then returns it in function name
+
+  strOPSystemVersion = GetRegistryValueHKLM(sComputerName, "SOFTWARE\Microsoft\Windows NT\CurrentVersion","CurrentVersion" ) 
+
+  strOPSystemVersion = strOPSystemVersion & " Build " &  GetRegistryValueHKLM(sComputerName, "SOFTWARE\Microsoft\Windows NT\CurrentVersion","BuildLab" ) 
+ 
+  strCSDVersion = GetRegistryValueHKLM(sComputerName, "SOFTWARE\Microsoft\Windows NT\CurrentVersion","CSDVersion" ) 
+
+  If strCSDVersion = "" Then
+    strCSDVersion = "No Service Pack installed"   
+  End If
+
+  strOPSystemVersion = strOPSystemVersion & " (" & strCSDVersion & ")"
+
+  Check_OP_system_version = strOPSystemVersion 
+
+End Function
+
+
+
+Function Check_Installation_Date(sComputerName)
+' This function checks required computer oparating system installation date from computer WMI and then returns information of it in function name
+
+
+  Set objWMIService = GetObject("winmgmts:{impersonationLevel=impersonate}!\\" & sComputerName & "\root\cimv2")
+  Set colItems = objWMIService.ExecQuery("SELECT InstallDate FROM Win32_OperatingSystem",,48) 
+  For Each objItem in colItems 
+    InstallationDate = objItem.InstallDate
+  Next
+
+  Check_Installation_Date = InstallationDate
+
+End Function
+
+
+
+Function Check_Computer_Model(sComputerName)
+' This function checks required computer computer model nformation from computer WMI and then returns information of it in function name
+
+
+  Set objWMIService = GetObject("winmgmts:{impersonationLevel=impersonate}!\\" & sComputerName & "\root\cimv2")
+  Set colItems = objWMIService.ExecQuery("SELECT Model FROM Win32_ComputerSystem",,48) 
+  For Each objItem in colItems 
+    sysModel1 =  objItem.Model
+  Next
+
+  Set colItems = objWMIService.ExecQuery("SELECT Name FROM Win32_ComputerSystemProduct WHERE Description = 'Computer System Product'",,48)
+  For Each objItem in colItems 
+    sysModel2 = objItem.Name
+  Next
+  If sysModel1 = sysModel2 then 
+    sysModel = sysModel1
+  Else
+    sysModel = sysModel1 & ", " & sysModel2
+  End If
+
+  Set colItems = objWMIService.ExecQuery("SELECT Version FROM Win32_ComputerSystemProduct",,48) 
+  For Each objItem in colItems 
+    sysModel = sysModel & ", " & objItem.Version
+  Next
+
+  Check_Computer_Model = sysModel 
+
+End Function
+
+
+
+Function Check_Serial(sComputerName)
+' This function checks required computer serial number from computer WMI and then returns information of it in function name
+
+
+  Set objWMIService = GetObject("winmgmts:{impersonationLevel=impersonate}!\\" & sComputerName & "\root\cimv2")
+  Set colItems = objWMIService.ExecQuery("SELECT SerialNumber FROM Win32_BIOS",,48) 
+  For Each objItem in colItems 
+    sysSerialNo1 = trim(objItem.SerialNumber)
+  Next
+
+  Set colItems = objWMIService.ExecQuery("SELECT IdentifyingNumber FROM Win32_ComputerSystemProduct",,48) 
+  For Each objItem in colItems 
+    sysSerialNo2 = trim(objItem.IdentifyingNumber) 
+  Next
+
+  If sysSerialNo1 = sysSerialNo2 then 
+    sysSerialNo = sysSerialNo1
+  Else 
+    sysSerialNo = sysSerialNo1 & ", <b>Identifying Number: </b>" & sysSerialNo2
+  End If
+
+  If sysSerialNo = "" Then 
+    sysSerialNo = "No Serial Number Defined"
+  End If
+
+  Check_Serial = sysSerialNo
+
+End Function
+
+
+
+Function Check_Memory_Size(sComputerName)
+' This function checks required computer physical memory size from computer WMI and then returns information of it in function name
+
+
+  Set objWMIService = GetObject("winmgmts:{impersonationLevel=impersonate}!\\" & sComputerName & "\root\cimv2")
+  Set colSettings = objWMIService.ExecQuery("SELECT TotalPhysicalMemory FROM Win32_ComputerSystem",,48)
+  For Each objComputer in colSettings 
+    MemTotal = objComputer.TotalPhysicalMemory
+  Next
+
+  AddToList Memorysize, "Total: "  & formatnumber(MemTotal/1073741824,2) & " GB", "<br>"
+
+  Set colSettings = objWMIService.ExecQuery("SELECT DeviceLocator, BankLabel, Capacity, Speed FROM Win32_PhysicalMemory",,48)
+  For Each objComputer in colSettings
+    MemDevice   = trim(objComputer.DeviceLocator)
+    MemBank     = trim(objComputer.BankLabel)
+    MemCapacity = trim(objComputer.Capacity)
+    MemSpeed    = trim(objComputer.Speed)
+
+    memoryitem =  MemDevice & ": " & MemBank & " Memory Size: " & formatnumber(MemCapacity/1073741824,2) & "GB"
+ 
+    If MemSpeed <> "" Then
+      memoryitem = memoryitem & ", Speed: " & MemSpeed 
+    Else
+      memoryitem = memoryitem
+    End If   
+
+    AddToList Memorysize, Memoryitem, "<br>"
+ 
+   Next
+
+  Check_Memory_Size = Memorysize
+
+End Function
+
+
+
+Function Check_PageFile_Size(sComputerName)
+' This function checks required computer page file information from computer WMI and then returns information of it in function name
+    PageFileTotal = 0
+
+
+  Set objWMIService = GetObject("winmgmts:{impersonationLevel=impersonate}!\\" & sComputerName & "\root\cimv2")
+  Set colItems = objWMIService.ExecQuery("SELECT FileSize, InitialSize, MaximumSize, Drive FROM Win32_PageFile",,48) 
+  For Each objItem in colItems 
+    PageFileSize    = objItem.FileSize
+    PageFileInitial = objItem.InitialSize
+    PageFileMAx     = objItem.MaximumSize
+    PageFileDrive   = objItem.Drive
+
+    PageFileTotal   = PageFileTotal + PageFileSize
+
+    If (PageFileInitial = 0 and PageFileMAx = 0) then 
+      PageFileInitial = "System Managed"
+      PageFileMAx     = "System Managed"
+    Else
+      PageFileInitial = formatnumber(PageFileInitial/1000,3) & " GB"
+      PageFileMAx     = formatnumber(PageFileMAx/1000,3) & " GB"
+    End If
+
+    AddToList PageFile, Ucase(PageFileDrive) & " " & formatnumber(PageFileSize/1048576000,3) & " GB" & " (" & PageFileInitial & " / " & PageFileMAx & ")", "<br>"
+
+  Next
+
+  AddToList PageFile, "<b>Total pagefile size: </b>" &  formatnumber(PageFileTotal/1048576000,3)  & " GB", "<br>"
+
+  Check_PageFile_Size = PageFile 
+
+End Function
+
+
+
+Function Check_HardDisk_Space(sComputerName)
+' This function checks computer hard disk space from computer WMI and then returns information of it in function name
+
+  Const HARD_DISK = 3
+
+
+  Set objWMIService = GetObject("winmgmts:{impersonationLevel=impersonate}!\\" & sComputerName & "\root\cimv2")
+  Set colDisks = objWMIService.ExecQuery ("SELECT FreeSpace, Caption, Size FROM Win32_LogicalDisk WHERE DriveType = " & HARD_DISK & "",,48)
+
+  For Each Disk in colDisks
+    If (Disk.Size <> "" and Disk.FreeSpace <> "") Then 
+      AddToList DiskSize, Disk.Caption & " " & formatnumber(Disk.Size/1073741824,1) & " GB <b>Free: </b>" & formatnumber(Disk.FreeSpace/1073741824,1) & " GB " & " ("& formatnumber(Disk.FreeSpace/Disk.Size*100,1) & "%)", "<br>"
+    Else 
+      AddToList DiskSize, Disk.Caption & " " & " Disk space/free space can not be resolved", "<br>" 
+    End If
+  Next
+
+  Check_HardDisk_Space = DiskSize
+
+End Function
+
+
+
+Function Check_HardDisk_Data(sComputerName)
+' This function checks hard disk model and serial from computer WMI and then returns information of it in function name
+
+
+  Set objWMIService = GetObject("winmgmts:{impersonationLevel=impersonate}!\\" & sComputerName & "\root\cimv2")
+  Set colItems = objWMIService.ExecQuery("SELECT Model FROM Win32_DiskDrive",,48) 
+
+  For Each objItem in colItems
+      AddToList strDiskModel, objItem.Model, ", " 
+  Next
+
+  Set colItemsserial = objWMIService.ExecQuery("SELECT SerialNumber FROM Win32_PhysicalMedia",,48) 
+  For Each objItemserial in colItemsserial 
+    AddToList strDiskSerial, objItemserial.SerialNumber, ", "
+  Next
+
+  Check_HardDisk_Data = strDiskModel & "<br>" & "<b>Serials: </b>" & strDiskSerial
+
+End Function
+
+
+
+Function Check_Video_Description(sComputerName)
+' This function checks required computer installed display adapters from its WMI and then returns information of it in function name
+
+
+  Set objWMIService = GetObject("winmgmts:{impersonationLevel=impersonate}!\\" & sComputerName & "\root\cimv2")
+  Set colItems = objWMIService.ExecQuery("SELECT Description, DriverVersion, DriverDate FROM Win32_VideoController",,48)
+  For Each VideoItem in colItems
+    AddToList VideoCardDriverInfo, VideoItem.Description & "<br><b> Version: </b>" & VideoItem.DriverVersion & "<b> Date: </b>" & FormatDateTime(WMIDateStringToDate(VideoItem.DriverDate),2), "<br>"
+  Next
+
+  Check_Video_Description = VideoCardDriverInfo
+
+End Function
+
+
+
+Function Check_NIC(sComputerName)
+' This function checks required computer installed network cards from computer WMI and then returns information of it in function name
+
+
+  Set objWMIService = GetObject("winmgmts:{impersonationLevel=impersonate}!\\" & sComputerName & "\root\cimv2")
+  Set colItems = objWMIService.ExecQuery("SELECT Description FROM Win32_NetworkAdapter WHERE NOT Description LIKE '%Miniport%' AND NOT Description LIKE '%Bluetooth%' AND NOT Description LIKE '%Microsoft%' AND NOT Description LIKE '%Infrared%' AND NOT Description LIKE '%Parallel%' AND NOT Description LIKE '%RAS%' AND NOT Description LIKE '%1394%'",,48) 
+  For Each objItem in colItems 
+      NetworkCards = objItem.Description & "<br>" & NetworkCards 
+  Next
+ 
+  Check_NIC = NetworkCards 
+
+End Function
+
+
+
+Function Check_logged_users(sComputerName)
+' This function checks currentnly logged users from computer registry via WMI and then returns it in function name
+
+  strLoggedUserList = "<table cellspacing=""0""  STYLE='font-size: 11px;font-family:Tahoma;'><tr><td height = 10  width=40></td><td width=545><hr></td></tr>"
+
+  DIM arrUserID()
+  DIM strUsers, strKeyPath
+  DIM UserIDIndex
+
+  ReDim Preserve arrUserID(0)
+
+  UserIDIndex = 0
+  strUsers    = ""
+
+  strKeyPath  = ""
+
+  Set objReg = GetObject("winmgmts:{impersonationLevel=impersonate}!\\" & sComputerName & "\root\default:StdRegProv")
+  objReg.EnumKey &H80000003, strKeyPath, arrSubKeys
+
+  For Each Subkey in arrSubKeys
+    If len(subkey) > 16 then
+
+      If right(subkey,8) ="_Classes" Then
+        subkey = left(subkey, len(subkey)-8)
+      End If
+
+      ReDim Preserve arrUserID(uBound(arrUserID) +1)
+      arrUserID(UserIDIndex) = Subkey    
+      UserIDIndex =  UserIDIndex + 1
+
+    End If
+  Next
+
+  For x = 1 to UBound(arrUserID) 
+     If arrUserID(x) = arrUserID(x-1) Then 
+      AddToList strUsers, arrUserID(x), " "       
+    End If
+  Next
+
+  Currentuser = Split(strUsers)
+  For each strUserSID in Currentuser
+
+    strKeyPath = "SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList"
+    objReg.EnumKey &H80000002, strKeyPath, arrSubKeys
+    For Each Subkey in arrSubKeys
+
+      If strUserSID = Subkey Then
+
+        Set objReg2 = GetObject("winmgmts:{impersonationLevel=impersonate}!\\" & sComputerName & "\root\default:StdRegProv")
+        strKeyPath2 = "SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList" & "\" & strUserSID
+        strValueName2 = "ProfileImagePath"
+        objReg.GetStringValue &H80000002, strKeyPath2, strValueName2, strLogonnameWithPath
+ 
+        strLogonName = Clear_user_name(strLogonnameWithPath)        
+  
+        If Document.All.ShowUserSID.checked = true then
+          strLoggedUserList = strLoggedUserList & "<table cellspacing=""0"" STYLE='font-size: 11px;font-family:Tahoma;'><tr><td height = 10><b>User: </b></td><td>" & UCase(strLogonName) & "</td></tr><tr><td height = 7></td></tr></table>"
+
+          strLoggedUserList = strLoggedUserList & Fill_Extended_User_Data(sComputerName, strLogonName, strUserSID)
+          strLoggedUserList = strLoggedUserList & "<table cellspacing=""0""><td height = 10  width=40></td><td width=200><hr></td></tr></table>"
+        End If
+
+        If Document.All.ShowUserSID.checked = false then
+          strHTMLUsersNames = strHTMLUsersNames & "<tr><td>" & UCase(strLogonName) & "</td></tr>"
+        End If
+
+      End If
+    
+    Next
+
+  Next
+
+  If Document.All.ShowUserSID.checked = false then
+    strLoggedUserList = strLoggedUserList & "<table cellspacing=""0""  STYLE='font-size: 11px;font-family:Tahoma;'><tr><td height = 10 width=170 valign = ""top""><b>Currently Logged Users: </b></td><td><table  STYLE='font-size: 11px;font-family:Tahoma;'>" & strHTMLUsersNames & "</table></td></tr></table>"
+  End If
+
+  strLoggedUserList = strLoggedUserList & "</table>"
+
+
+  Check_logged_users = strLoggedUserList 
+
+End Function
+
+
+
+Function Fill_Extended_User_Data(sComputerName, strLoggedUser, strLoggedSID)
+
+  strLoggedUserData = "<table  cellspacing=""0""  STYLE='font-size: 11px;font-family:Tahoma;'><tr><td height = 7></td></tr><tr><td><b>SID: </b>" & strLoggedSID & "</td></tr>" _
+                    & "<tr><td height = 7></td></tr><tr><td>" & Check_Proxy_Settings(sComputerName, strLoggedSID) & "</td></tr>" _
+                    & "<tr><td>" & Check_Enviroment_variables(sComputerName, strLoggedSID) & "</td></tr>" _
+                    & "</table>"
+
+  Fill_Extended_User_Data = strLoggedUserData
+
+End Function
+
+
+
+Function Check_DNS_Suffix(sComputerName)
+' This function checks DNS suffixes from computer registry via WMI and then returns it in function name
+
+  strDNSSuffix = GetRegistryValueHKLM(sComputerName, "System\CurrentControlSet\Services\TCPIP\Parameters","SearchList" )
+
+  If strDNSSuffix = "" Then 
+    strDNSSuffix = "No DNS Suffix Defined"
+  End If
+ 
+  Check_DNS_Suffix = strDNSSuffix
+
+End Function
+
+
+
+Function Check_DotNet(sComputerName)
+' This function checks installed .NET versions from computer registry via WMI and then returns it in function name
+ 
+  strKeyPath = "SOFTWARE\Microsoft\NET Framework Setup\NDP"
+  Set objReg = GetObject("winmgmts:{impersonationLevel=impersonate}!\\" & sComputerName & "\root\default:StdRegProv")
+
+  objReg.EnumKey &H80000002, strKeyPath, arrSubKeys
+  strValueNameVersion = "Version"
+   If Not IsNull(arrSubkeys) then
+    For Each Subkey in arrSubKeys
+
+    If (InStr(Subkey,"v1.1")) > 0 then
+      AddToList dotnetlist,Subkey, "<br>"
+    End If
+
+    If (InStr(Subkey,"v2.0")) > 0 then
+      objReg.GetStringValue &H80000002, strKeyPath & "\" & Subkey, strValueNameVersion, strValueVersionNum
+      AddToList dotnetlist,subkey & "<b> Version: </b>"& strValueVersionNum, "<br>"
+    End If
+
+    If (InStr(Subkey,"v3.0")) > 0 then
+      objReg.GetStringValue &H80000002, strKeyPath & "\" & Subkey, strValueNameVersion, strValueVersionNum
+      AddToList dotnetlist,subkey & "<b> Version: </b>"& strValueVersionNum, "<br>" 
+    End If
+
+    If (InStr(Subkey,"v3.5")) > 0 then
+      objReg.GetStringValue &H80000002, strKeyPath & "\" & Subkey, strValueNameVersion, strValueVersionNum
+      AddToList dotnetlist,subkey & "<b> Version: </b>"& strValueVersionNum, "<br>" 
+    End If
+
+    If (InStr(Subkey,"v4")) > 0 then
+      strKeyPathClient = strKeyPath & "\" & Subkey  & "\" & "Client"
+      objReg.GetStringValue  &H80000002, strKeyPathClient, strValueNameVersion, strValueVersionNum
+
+      if strValueVersionNum <> "" then
+        objReg.GetStringValue &H80000002, strKeyPath & "\" & Subkey& "\" & "Client", strValueNameVersion, strValueVersionNum
+        AddToList dotnetlist,subkey & " Client <b> Version: </b>"& strValueVersionNum, "<br>" 
+      End If
+
+      strKeyPathClient = strKeyPath & "\" & Subkey  & "\" & "Full"
+      objReg.GetStringValue  &H80000002, strKeyPathClient, strValueNameVersion, strValueVersionNum
+
+      if strValueVersionNum <> "" then
+        objReg.GetStringValue &H80000002, strKeyPath & "\" & Subkey& "\" & "Full", strValueNameVersion, strValueVersionNum
+        AddToList dotnetlist, subkey & " Full <b> Version: </b>"& strValueVersionNum, "<br>" 
+      End if  
+    End If
+
+  Next
+
+ End If
+
+    Check_DotNet = dotnetlist
+
+End Function
+
+
+
+Function Check_Host_UpTime(sComputerName)
+' This function checks computer uptime from WMI and then returns current uptime in function name
+
+  Set objWMIService = GetObject("winmgmts:{impersonationLevel=impersonate}!\\" & sComputerName & "\root\cimv2")
+       Set colItems = objWMIService.ExecQuery("SELECT SystemUpTime FROM Win32_PerfFormattedData_PerfOS_System",,48) 
+       If Not IsNull(colItems) then
+         For Each objItem in colItems 
+           Uptime_s = objItem.SystemUpTime
+ '          Uptime_s = Cstr(objItem.SystemUpTime)
+         Next
+
+         uptime_m = Uptime_s/60
+         uptime_h = uptime_m/60
+
+         If uptime_h > 23 Then
+           uptime_d = Int(uptime_h/24)
+           uptime_h = uptime_h - (Int(uptime_h/24)*24)
+           Check_Host_UpTime = uptime_d & " days " & Int(uptime_h) & " hour " & Int(uptime_m - (Int(uptime_h + uptime_d*24)*60)) & " min " & uptime_s - (Int(uptime_m)*60) & " sec"
+
+         Else
+           Check_Host_UpTime = Int(uptime_h) & " hour " & Int(uptime_m - (Int(uptime_h)*60)) & " min " & uptime_s - (Int(uptime_m)*60) & " sec"
+         End If
+       
+       Else
+         Check_Host_UpTime = "Can not be resolved"
+       End If         
+
+End Function
+
+
+
+Function Check_Proxy_Settings(sComputerName, USID)
+' This function checks proxy settings of required user SID from computer registry via WMI and then returns it in function name
+
+' Check is automatically detect proxy settings is enabled and if proxy autoconfiguration script is enabled 
+       Set objReg = GetObject("winmgmts:{impersonationLevel=impersonate}!\\" & sComputerName & "\root\default:StdRegProv")
+
+       strKeyPath   = USID & "\Software\Microsoft\Windows\CurrentVersion\Internet Settings\Connections"
+       bValueName = "DefaultConnectionSettings"
+       objReg.GetBinaryValue &H80000003, strKeyPath, bValueName, bValue
+  
+       ' Read 9th byte of registry value and convert it to binary mask  
+       strBinMask = Convert_Binary(bValue(8)) 
+
+       ' Read 5th bit value from left
+       If Mid(strBinMask,5,1) = "1" Then
+         User_AutoProxy = "Enabled"
+       Else 
+         User_AutoProxy = "Disabled"
+       End If 
+
+       ' Read 6th bit value from left, if set then check address from another registry value
+       If Mid(strBinMask,6,1) = "1" Then
+         strKeyPath   = USID & "\Software\Microsoft\Windows\CurrentVersion\Internet Settings"
+         strValueName = "AutoConfigURL"
+         objReg.GetStringValue &H80000003, strKeyPath, strValueName, strValue
+  
+         User_AutoConfigScript = "Enabled <b>Address: </b>" & strValue
+
+       Else 
+         User_AutoConfigScript = "Disabled"
+       End If 
+
+' Check proxy server and its port 
+       strKeyPath   = USID & "\Software\Microsoft\Windows\CurrentVersion\Internet Settings"
+       strValueName = "ProxyServer"
+       objReg.GetStringValue &H80000003, strKeyPath, strValueName, strValue
+
+       If IsNull(strValue) Then
+         strValue = "No Proxy Server Defined"
+       End If
+
+       User_Proxy = strValue
+
+' Check proxy exceptions  
+       strKeyPath   = USID & "\Software\Microsoft\Windows\CurrentVersion\Internet Settings"
+       strValueName = "ProxyOverride"
+       objReg.GetStringValue &H80000003, strKeyPath, strValueName, strValue
+
+       If IsNull(strValue) Then
+         strValue = "No Proxy Exceptions Defined"
+       End If
+
+       User_Proxy_Exceptions = strValue
+   
+       Local_bypass_start = InStr(User_Proxy_Exceptions,"<local>")       
+  
+       If Local_bypass_start > 0 Then
+         User_Proxy_Exceptions = Mid(User_Proxy_Exceptions,1,Local_bypass_start-1)
+         User_Local_bypass = "Enabled"
+       Else 
+         User_Local_bypass = "Disabled"
+       End if
+
+'Proxy enable
+       strKeyPath   = USID & "\Software\Microsoft\Windows\CurrentVersion\Internet Settings"
+       strValueName = "ProxyEnable"
+       objReg.GetDWORDValue &H80000003, strKeyPath, strValueName, dwValue
+
+       If dwValue = 1 Then 
+         User_Proxy_Enable = "Enabled"
+      
+       Else 
+         User_Proxy_Enable = "Disabled"
+       End If
+
+'Autodial 
+       strKeyPath   = USID & "\Software\Microsoft\Windows\CurrentVersion\Internet Settings"
+       strValueName = "NoNetAutodial"
+       objReg.GetDWORDValue &H80000003, strKeyPath, strValueName, dwValue
+
+       User_Autodial = dwValue
+
+       strValueName = "EnableAutodial"
+       objReg.GetDWORDValue &H80000003, strKeyPath, strValueName, dwValue
+
+       User_Enable_autodial = dwValue
+
+       If (User_Autodial = 0 and User_Enable_autodial = 0) Then
+         User_Dialup = "Never dial a connection"
+       End If
+
+       If (User_Autodial = 0 and User_Enable_autodial = 1)  Then
+         User_Dialup = "Always dial my default connection"
+       End If
+
+       If (User_Autodial = 1 and User_Enable_autodial = 0)  Then
+         User_Dialup = "Dial whenever a network connection is not present"
+       End If
+
+       If (User_Autodial = 1 and User_Enable_autodial = 1)  Then 
+         User_Dialup = "Unknown"
+       End If
+
+'Work Offline setting
+       strKeyPath   = USID & "\Software\Microsoft\Windows\CurrentVersion\Internet Settings"
+       strValueName = "GlobalUserOffline"
+       objReg.GetDWORDValue &H80000003, strKeyPath, strValueName, dwValue
+
+       If dwValue = 1 Then 
+         User_Work_Offline = "Enabled"
+       Else 
+         User_Work_Offline = "Disabled"
+       End If
+
+' Return HTML table with values in function name      
+       strHTMLProxySettings = "<b>Proxy Settings: </b><br><table  cellspacing=""0"" style=""word-break:break-all;font-size: 11px;font-family:Tahoma;"">" _
+                             &"<tr><td width = 40></td><td width = 230 valign = ""top""><b>Automatically detect settings: </b></td><td width = 10></td><td width = 300>" & User_AutoProxy & "</td></tr>" _
+                             &"<tr><td width = 40></td><td width = 230 valign = ""top""><b>Use automatic configuration script: </b></td><td width = 10></td><td width = 300>" & User_AutoConfigScript & "</td></tr>" _
+                             &"<tr><td width = 40></td><td width = 230 valign = ""top""><b>Use a proxy server for your LAN: </b></td><td width = 10></td><td width = 300>" & User_Proxy_Enable & "</td></tr>" _
+                             &"<tr><td width = 40></td><td width = 230 valign = ""top""><b>Proxy address and Port: </b></td><td width = 10></td><td width = 300>" & User_Proxy & "</td></tr>" _
+                             &"<tr><td width = 40></td><td width = 230 valign = ""top""><b>Bypass proxy server for local addresses: </b></td><td width = 10></td><td width = 300>" & User_Local_bypass & "</td></tr>" _
+                             &"<tr><td width = 40></td><td width = 230 valign = ""top""><b>Do not use proxy server for: </b></td><td width = 10></td><td width = 300>" & User_Proxy_Exceptions & "</td></tr>" _
+                             &"<tr><td width = 40></td><td width = 230 valign = ""top""><b>Dial-Up Setting: </b></td><td width = 10></td><td width = 300>" & User_dialup & "</td></tr>" _
+                             &"<tr><td width = 40></td><td width = 230 valign = ""top""><b>Work Offline: </b></td><td width = 10></td><td width = 300>" & User_Work_Offline & "</td></tr>" _
+                             &"</table>"
+
+       Check_Proxy_Settings = strHTMLProxySettings
+
+End Function
+
+
+
+Function Check_Enviroment_variables(sComputerName, USID)
+
+' Check HOMESHARE from user envroment variables
+       strKeyPath   = USID & "\Environment"
+       strValueName = "HOMESHARE"
+
+       Set objReg = GetObject("winmgmts:{impersonationLevel=impersonate}!\\" & sComputerName & "\root\default:StdRegProv")
+       objReg.GetStringValue &H80000003, strKeyPath, strValueName, strValue
+
+       If IsNull(strValue) Then
+         strValue = "Not Set"
+       End If
+      
+       strHOMESHAREvar = strValue 
+
+       strValueName = "NOTESSHARE"
+       objReg.GetStringValue &H80000003, strKeyPath, strValueName, strValue
+
+       If IsNull(strValue) Then
+         strValue = "Not Set"
+       End If
+
+       strNOTESSHAREvar = strValue
+
+       strHTMLEnvironmentVar = "<table  cellspacing=""0"" style='font-size: 11px;font-family:Tahoma;'><tr><td height = 7></td></tr>" _
+                             &"<tr><td><b>HOMESHARE variable: </b><td width = 5></td><td>" & strHOMESHAREvar & "</td></tr>" _
+                             &"<tr><td><b>NOTESSHARE variable: </b><td></td><td>" & strNOTESSHAREvar & "</td></tr>" _
+                             &"</table>"
+
+       Check_Enviroment_variables = strHTMLEnvironmentVar
+
+End Function
+
+
+
+Function GetRegistryValueHKLM(sComputerName, strKeyPath,strValueName ) 
+Dim intReg
+
+      Set objReg = GetObject("winmgmts:{impersonationLevel=impersonate}!\\" & sComputerName & "\root\default:StdRegProv")
+      intReg = objReg.GetStringValue(&H80000002, strKeyPath, strValueName, strValue)
+
+      If IntReg = 0 Then 
+        GetRegistryValueHKLM = strValue
+      Else
+        If  IntReg = 1 Then
+          If IsNull(strValue) Then
+            GetRegistryValueHKLM = ""
+          Else
+            GetRegistryValueHKLM = strValue
+          End If
+        Else 
+          GetRegistryValueHKLM = "WMI error when getting value with objReg.GetStringValue"
+        End If
+      End If
+
+End Function
+
+
+
+Function Ping(strHost)
+       Dim oPing, oRetStatus, bReturn
+       Set oPing = GetObject("winmgmts:{impersonationLevel=impersonate}").ExecQuery("SELECT * FROM Win32_PingStatus WHERE address='" & strHost & "'")
+ 
+       For Each oRetStatus In oPing
+
+         If IsNull(oRetStatus.StatusCode) Or oRetStatus.StatusCode <> 0 Then
+           bReturn = "false"
+         Else
+           bReturn = "true"
+         End If
+         Set oRetStatus = Nothing
+       Next
+       Set oPing = Nothing
+ 
+       Ping = bReturn
+
+End Function
+
+
+
+Function WMIDateStringToDate(dtmBootup)
+' This functions transfers date form of WMI to date datatype and then returns it in function name
+
+       WMIDateStringToDate = CDate(Mid(dtmBootup, 5, 2) & "/" & Mid(dtmBootup, 7, 2) & "/" & Left(dtmBootup, 4) & " " & Mid (dtmBootup, 9, 2) & ":" & Mid(dtmBootup, 11, 2) & ":" & Mid(dtmBootup, 13, 2))
+ 
+End Function
+ 
+
+
+Function AddToList(strlist, strname, strseparator)
+' This function adds required string to another string separeted by space character and returns combined string in function name
+
+       If strlist <> "" then
+         strlist = strlist & strseparator & strname
+       Else  
+         strlist = strname
+       End IF
+
+       AddToList = strlist
+
+End Function
+
+
+
+Function Clear_user_name(ProfilePath)
+' This function saparates user name from profile path and then returns user name in function name
+
+       i = len(ProfilePath)
+
+       do until mid(ProfilePath,i,1) = "\"
+         i=i-1
+       loop
+
+       Clear_user_name = right (ProfilePath, len(ProfilePath)-i) 
+
+End Function
+
+
+
+function Clear_String(sToClear) 
+
+'Remove space characters in the begining and the end of the string
+         sToClear = trim(sToClear)
+
+'Remove All Back Slash Characters
+         sToClear = Remove_Char(sToClear,92)
+
+'Remove All Asterisk Characters
+         sToClear = Remove_Char(sToClear,42)
+
+'Remove All Forward Slash Characters
+         sToClear = Remove_Char(sToClear,47)
+
+'Remove All Colon Characters
+         sToClear = Remove_Char(sToClear,58)
+
+'Remove All Low Line Characters
+         sToClear = Remove_Char(sToClear,95)
+
+'Remove All Comma Characters
+         sToClear = Remove_Char(sToClear,44)
+
+'Remove All Quatitation Mark Characters
+         sToClear = Remove_Char(sToClear,34)
+
+'Remove All Interstring Spaces
+         sToClear = Remove_Char(sToClear,32)
+
+'Return cleaned string in function name
+       Clear_String = sToClear
+
+End function
+
+
+
+Function Remove_Char(sString,sAsciiChar)
+' This sub routine removes required characters from a string. Decimal Ascii value of characters to removed is bring in parameter.  
+
+       ' Calculate lenght of the string
+       ilen = len(sString)
+
+       ' Walk all characters of the sting and if the characters is required to remove then copy left and right part of string to a new string and decrease lenght of string and walk index by one.  
+       for i = 1 to ilen
+         c=Mid(sString, i, 1)
+         if c = chr(sAsciiChar) then 
+           sString= left(sString, i-1) + right(sString, ilen-i)
+           i = i - 1
+           ilen = ilen - 1
+         end if 
+       next
+
+       ' Return cleaned string in function name
+       Remove_Char = sString
+
+End Function
+
+
+
+Function Convert_Binary(iValue)
+' This sub routine converts integer value to string where ones and zeros represent corresponding binary bits 
+
+        strBin = ""
+
+        If iValue > 127 Then
+          strBin = strBin & "1"
+          iValue = iValue - 128
+        Else    
+          strBin = strBin & "0"
+        End If
+
+        If iValue > 63 Then
+          strBin = strBin & "1"
+          iValue = iValue - 64
+        Else    
+          strBin = strBin & "0"
+        End If
+
+        If iValue > 31 Then
+          strBin = strBin & "1"
+          iValue = iValue - 32
+        Else    
+          strBin = strBin & "0"
+        End If
+
+        If iValue > 15 Then
+          strBin = strBin & "1"
+          iValue = iValue - 16
+        Else    
+          strBin = strBin & "0"
+        End If
+
+        If iValue > 7 Then
+          strBin   = strBin & "1"
+          iValue = iValue - 8
+        Else    
+          strBin = strBin & "0"
+        End If
+
+        If iValue > 3 Then
+          strBin = strBin & "1"
+          iValue = iValue - 4
+        Else    
+          strBin = strBin & "0"
+        End If
+
+        If iValue > 1 Then
+          strBin = strBin & "1"
+          iValue = iValue - 2
+        Else    
+          strBin = strBin & "0"
+        End If
+
+        If iValue > 0 Then
+          strBin = strBin & "1"
+          iValue = iValue - 1
+        Else    
+          strBin = strBin & "0"
+        End If
+
+        Convert_Binary = strBin
+
+End Function
+
+
+
+Sub ScreenUpdate()
+	'Screen updates in an HTA...
+	With CreateObject("WScript.Shell")
+	  .run "%comspec% /c exit", 0, true
+	End With
+End Sub
+
+</script>
+
+
+
+<BODY>
+<div align="center"  STYLE='font-size: 16px;font-family:Tahoma;background-color:C4CFF3'><b> Computer Information </b></div>
+<div align="left" STYLE='background-color:C4CFF3'><table cellspacing="0">
+<tr><td height = 10></td></tr>
+<tr nowrap><td width=230  STYLE='font-size: 11px;font-family:Tahoma;'><b>Computer name/IP</b></td>
+<td width="185"><input type="text" size="25" autocomplete="off" id="Computer_Name" maxlength = "36"></td><td width = 40></td>
+<td><table><tr><td><input type="checkbox" name="ShowUserSID" style="height: 10px; width: 10px"></td><td><font  STYLE='font-size: 11px;font-family:Tahoma;'>Show Extented User data</font></td></tr>
+<tr><td></td><td><font size="2" ></font></td></tr></table>
+</td></tr>
+<tr><td height = 10></td></tr></table></div>
+<div align="left" STYLE='background-color:C4CFF3'><table cellspacing="0"><tr nowrap><td height = 10 width=230></td><td><input type="hidden" id="OK" name="OK" value="0">
+<input type="button" style="height: 25px; width: 185px" id="SEARCH_button" value=" Search "  STYLE='font-size: 11px;font-family:Tahoma;' onClick="Start_sub" >
+</td></tr><tr><td height = 10  width=170></td></tr></table></div>
+<div align="left"><table cellspacing="0" STYLE='font-size: 11px;font-family:Tahoma;'><tr><td  width=170></td></tr><tr nowrap>
+<td></td></tr>
+<tr><td height = 5></td></tr><tr nowrap><td valign="top"><b>Name and IP Address </b></td><td width=400><font id="Comp_Name"></font></td><td>
+<td></td></tr>
+<tr><td height = 5></td></tr><tr nowrap><td valign="top"><b>Internet Explorer Version</b></td><td width=400><font id="IE_Version"></font></td>
+<td></td></tr>
+<tr><td height = 5></td></tr><tr nowrap><td valign="top"><b>Windows Version</b></td><td width=400><font id="Windows_Version"></font></td>
+<td></td></tr>
+<tr><td height = 5></td></tr><tr nowrap><td valign="top"><b>Operating system Version</b></td><td width=400><font id="OP_system_Version"></font></td>
+<td></td></tr>
+<tr><td height = 5></td></tr><tr nowrap><td valign="top"><b>Computer Installation Date</b></td><td width=400><font id="Installation_Date"></font></td>
+<td></td></tr>
+<tr><td height = 5></td></tr><tr nowrap><td valign="top"><b>Computer Model</b></td><td width=400><font id="Computer_Model"></font></td>
+<td></td></tr>
+<tr><td height = 5></td></tr><tr nowrap><td valign="top"><b>Computer Serial</b></td><td width=400><font id="Computer_Serial"></font></td>
+<td></td></tr>
+<tr><td height = 5></td></tr><tr nowrap><td valign="top"><b>Memory Installed</b></td><td width=400><font id="Memory_Installed"></font></td>
+<td></td></tr>
+<tr><td height = 5></td></tr><tr nowrap><td valign="top"><b>Pagefile Size (Init/Max)</b></td><td width=400><font id="Pagefile_size"></font></td>
+<td></td></tr>
+<tr><td height = 5></td></tr><tr nowrap><td valign="top"><b>Hard Disk Size</b></td><td width=400><font id="Disk_Size"></font></td>
+<td></td></tr>
+<tr><td height = 5></td></tr><tr nowrap><td valign="top"><b>Hard Disk Model/Serial</b></td><td width=400><font id="Disk_Data"></font></td>
+<td></td></tr>
+<tr><td height = 5></td></tr><tr nowrap><td valign="top"><b>Videocard Description</b></td><td width=400><font id="Video_Description"></font></td>
+<td></td></tr>
+<tr><td height = 5></td></tr><tr nowrap><td valign="top"><b>Network Cards</b></td><td width=400><font id="Network_Cards"></font></td>
+<td></td></tr>
+<tr><td height = 5></td></tr><tr nowrap><td valign="top"><b>DNS Suffix</b></td><td width=400 style="word-break:break-all;"><font id="DNS_suffix"></font></td>
+<td></td></tr>
+<tr><td height = 5></td></tr><tr nowrap><td valign="top"><b>.NET Framework installed</b></td><td width=400><font id="NET_framework"></font></td>
+<td></td></tr>
+<tr><td height = 5></td></tr><tr nowrap><td valign="top"><b>Computer Up Time</b></td><td width=400><font id="Last_Boot_Time"></font></td>
+<td></td></tr>
+</table>
+<font id="Currently_Logged_Users" ></font>
+
+</BODY>
+</HTML>
+<! -- Created Janne Roponen 2011-2022 -->
+<! End >
